@@ -1,5 +1,5 @@
 ﻿#include "QtSERVER.h"
-#include <QTcpServer>// Инклюд класса
+#include <QTcpServer>
 #include <QTcpSocket>
 #include <qdatetime.h>
 //
@@ -140,7 +140,7 @@ void QtSERVER::my_readyRead()
     }
     QByteArray ba_array = socket->readAll(); // Сюда будем читать из сокета. Есть функция чтения по строчкам для форматированного текста.
     QString client_request = QString(ba_array);
-    ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сокет сообщил:\n " + client_request);
+    ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Пришел запрос :\n " + client_request);
     //Обработка запроса
     int req_result = Client_request_identification(client_request);
     if (req_result == 1)
@@ -387,7 +387,7 @@ void QtSERVER::Client_request_ALL_in()
         ui.pte_main->appendPlainText(q.lastError().text());
         return;
     }
-//    QString result = u8"AA3A";
+
     while (q.next())
     {
         QString nm = q.value("Name").toString();
