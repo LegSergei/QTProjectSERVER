@@ -3,9 +3,11 @@
 #include <QTcpSocket>
 #include <qdatetime.h>
 //
-#include<QSqlDatabase>
-#include<QSqlError>
-#include<QSqlQuery>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
+#include <QFile>
+#include <QPixMap>
 
 
 
@@ -47,6 +49,9 @@ void QtSERVER::my_Start()
         tcp_server->listen(QHostAddress::Any, port); // Начинаем слушать этот порт
         QDateTime date = QDateTime::currentDateTime();
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сервер запущен");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сервер запущен");
+        }
 
     }
     else if (state == u8"Остановить сервер") { // А это случай, когда сервер уже работает и его надо остановить
@@ -57,6 +62,9 @@ void QtSERVER::my_Start()
         tcp_server->close();
         QDateTime date = QDateTime::currentDateTime();
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сервер остановлен");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сервер остановлен");
+        }
     }
     
 
@@ -78,7 +86,9 @@ void QtSERVER::my_Connected()
 {
     QDateTime date = QDateTime::currentDateTime();
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение установлено");
-//    s = qobject_cast<QTcpSocket*>(sender()); //Сохранение сокета.
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение установлено");
+    }
 }
 
 
@@ -88,6 +98,9 @@ void QtSERVER::my_DConnected()
     socket->deleteLater(); // Удалит сокет только после того, как он отправит все служебные TCP-пакеты. Важно.
     QDateTime date = QDateTime::currentDateTime();
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение разорвано");
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение разорвано");
+    }
 }
 
 void QtSERVER::my_stateChanged(QAbstractSocket::SocketState socketState)
@@ -119,6 +132,9 @@ void QtSERVER::my_stateChanged(QAbstractSocket::SocketState socketState)
     }
     QDateTime date = QDateTime::currentDateTime();
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сокет изменил состояние на: " + state);
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Сокет изменил состояние на: " + state);
+    }
 }
 
 void QtSERVER::my_readyRead()
@@ -128,19 +144,31 @@ void QtSERVER::my_readyRead()
     QDateTime date = QDateTime::currentDateTime();
     if (socket == nullptr) {
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": ОШИБКА! Сокет удален.");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": ОШИБКА! Сокет удален.");
+        }
         return;
     }
     if (!socket->isValid()) {
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": ОШИБКА! Сокет не валиден.");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": ОШИБКА! Сокет не валиден.");
+        }
         return;
     }
     if (!socket->isOpen()) {
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": ОШИБКА! Сокет закрыт.");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": ОШИБКА! Сокет закрыт.");
+        }
         return;
     }
     QByteArray ba_array = socket->readAll(); // Сюда будем читать из сокета. Есть функция чтения по строчкам для форматированного текста.
     QString client_request = QString(ba_array);
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Пришел запрос :\n " + client_request);
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Пришел запрос :\n " + client_request);
+    }
     //Обработка запроса
     int req_result = Client_request_identification(client_request);
     if (req_result == 1)
@@ -173,6 +201,11 @@ void QtSERVER::my_readyRead()
             QByteArray ba_array_aut = u8"AAAAПароль не совпал";
             qint64 res = socket->write(ba_array_aut);
         }
+        if (reg_autho == 4)// Такого пользователя не существует.  БТ
+        {
+            QByteArray ba_array_aut = u8"AAAAТакого пользователя не существует.";
+            qint64 res = socket->write(ba_array_aut);
+        }
     }
 
     if (req_result == 3)
@@ -191,7 +224,7 @@ void QtSERVER::my_readyRead()
 
 int QtSERVER::Client_request_identification(QString request)
 {
-    if (request.startsWith("AA8A")) 
+    if (request.startsWith("AA7A")) 
     {
         return 1;// 1 - значит пришел запрос от Регистрации
     }
@@ -206,14 +239,29 @@ int QtSERVER::Client_request_identification(QString request)
     if (request.startsWith("AA1A"))
     {
         Chat_number = 1;
-        return 4;// 4 - значит надо отгрузить всю базу
+        return 4;// 4 - значит надо отгрузить всю таблицу чата № 1
     }
     if (request.startsWith("AA2A"))
     {
         Chat_number = 2;
-        return 4;// 4 - значит надо отгрузить всю базу
+        return 4;// 4 - значит надо отгрузить всю таблицу чата № 2
     }
-
+    if (request.startsWith("AA1C"))
+    {
+        Chat_number = 3;
+        return 4;// 4 - значит надо отгрузить всю таблицу чата № 3
+    }
+    if (request.startsWith("AA2C"))
+    {
+        Chat_number = 4;
+        return 4;// 4 - значит надо отгрузить всю таблицу чата № 4
+    }
+    if (request.startsWith("AA3C"))
+    {
+        Chat_number = 5;
+        return 4;// 4 - значит надо отгрузить всю таблицу чата № 5
+    }
+    return 99;
 }
 
 int QtSERVER::Client_request_registration(QString request)
@@ -229,6 +277,9 @@ int QtSERVER::Client_request_registration(QString request)
     }
     QDateTime date = QDateTime::currentDateTime();
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение с базой данных пользователей успешно");
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение с базой данных пользователей успешно");
+    }
     // база данных
     //Запрос к бд
     QSqlQuery q(my_db);
@@ -247,13 +298,25 @@ int QtSERVER::Client_request_registration(QString request)
     {
         QString str = q.value("Login").toString();
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Ответ от базы данных пользователей получен");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Ответ от базы данных пользователей получен");
+        }
         ui.pte_main->appendPlainText(str);
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(str);
+        }
         ui.pte_main->appendPlainText(u8"Такой пользователь уже есть");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(u8"Такой пользователь уже есть");
+        }
         return 2;
     }
     else
     {
-        ui.pte_main->appendPlainText(u8"Такого пользователя не существует"); // тут будем делать INSERT
+        ui.pte_main->appendPlainText(u8"Такого пользователя не существует");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(u8"Такого пользователя не существует");
+        }// тут будем делать INSERT
         q.prepare(
              "INSERT INTO user_name(Login, Password) VALUES(:lg, :ps)"
         );
@@ -281,6 +344,9 @@ int QtSERVER::Client_request_authorization(QString request)
     }
     QDateTime date = QDateTime::currentDateTime();
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение с базой данных пользователей успешно");
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение с базой данных пользователей успешно");
+    }
     QSqlQuery q(my_db);
     q.prepare(
         "SELECT  Login, Password"
@@ -297,21 +363,33 @@ int QtSERVER::Client_request_authorization(QString request)
     {
         QString Password_string = q.value("Password").toString();
         ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Ответ от базы данных пользователей получен");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Ответ от базы данных пользователей получен");
+        }
         ui.pte_main->appendPlainText(Password_string);
         if (Password_string == list[2])// Проверка совпадает ли значение из бд с введеным пользователем паролем.
         {
             ui.pte_main->appendPlainText(u8"Пароль совпал");
+            if (ui.cb_Log->isChecked()) {
+                QtSERVER::Log(u8"Пароль совпал");
+            }
             return 2; //Успех, пароль совпал.
         }
         else
         {
             ui.pte_main->appendPlainText(u8"Пароль не совпал");
+            if (ui.cb_Log->isChecked()) {
+                QtSERVER::Log(u8"Пароль не совпал");
+            }
             return 3; // Пароль не верен
         }
     }
     else
     {
         ui.pte_main->appendPlainText(u8"Такого пользователя не существует");
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(u8"Такого пользователя не существует");
+        }
         return 4;
     }
     return 0;
@@ -332,6 +410,9 @@ bool QtSERVER::Client_request_send_message(QString request)
         return 0;
     }
     ui.pte_main->appendPlainText(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение с базой данных пользователей успешно");
+    if (ui.cb_Log->isChecked()) {
+        QtSERVER::Log(date.toString("dd.MM.yyyy hh:mm:ss") + u8": Соединение с базой данных пользователей успешно");
+    }
     QSqlQuery q(my_db);
     if (Chat_number == 1)
     {
@@ -343,6 +424,24 @@ bool QtSERVER::Client_request_send_message(QString request)
     {
         q.prepare(
             "INSERT INTO users_messages_2(Name, Date, Message) VALUES(:nm, :dt, :me)"
+        );
+    }
+    if (Chat_number == 3)
+    {
+        q.prepare(
+            "INSERT INTO users_messages_3(Name, Date, Message) VALUES(:nm, :dt, :me)"
+        );
+    }
+    if (Chat_number == 4)
+    {
+        q.prepare(
+            "INSERT INTO users_messages_4(Name, Date, Message) VALUES(:nm, :dt, :me)"
+        );
+    }
+    if (Chat_number == 5)
+    {
+        q.prepare(
+            "INSERT INTO users_messages_5(Name, Date, Message) VALUES(:nm, :dt, :me)"
         );
     }
     q.bindValue(":nm", list[1]);
@@ -382,6 +481,27 @@ void QtSERVER::Client_request_ALL_in()
             "FROM users_messages_2 um;"
         );
     }
+    if (Chat_number == 3)
+    {
+        q.prepare(
+            "SELECT *"
+            "FROM users_messages_3 um;"
+        );
+    }
+    if (Chat_number == 4)
+    {
+        q.prepare(
+            "SELECT *"
+            "FROM users_messages_4 um;"
+        );
+    }
+    if (Chat_number == 5)
+    {
+        q.prepare(
+            "SELECT *"
+            "FROM users_messages_5 um;"
+        );
+    }
     if (!q.exec())
     {
         ui.pte_main->appendPlainText(q.lastError().text());
@@ -395,6 +515,9 @@ void QtSERVER::Client_request_ALL_in()
         QString ms = q.value("Message").toString();
         QString result = u8"AA3A" + nm + u8" " + dt + u8" : " + ms + u8"$%&";
         ui.pte_main->appendPlainText(result);
+        if (ui.cb_Log->isChecked()) {
+            QtSERVER::Log(result);
+        }
         QByteArray ba_buffer;
         ba_buffer.append(result);
         qint64 res = socket->write(ba_buffer);
@@ -407,3 +530,17 @@ void QtSERVER::Exit()
 {
     QApplication::quit();
 }
+
+void QtSERVER::Log(QString str)
+{
+    QFile Logfile("log.txt");
+    if (Logfile.open(QIODevice::Append | QIODevice::Text)) {
+
+        QTextStream logout(&Logfile);
+        logout << str << endl;
+        Logfile.flush();
+        Logfile.close();
+
+    }
+}
+

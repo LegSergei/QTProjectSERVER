@@ -32,4 +32,5 @@ private slots: // Обработчик нажатия на кнопку
     bool Client_request_send_message(QString request);
     void Client_request_ALL_in();
     void Exit();
+    void Log(QString str);
 };

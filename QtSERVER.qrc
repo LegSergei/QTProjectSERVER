@@ -1,4 +1,9 @@
 <RCC>
-    <qresource prefix="QtSERVER">
-    </qresource>
+  <qresource prefix="QtSERVER">
+    <file>images/502758f.jpg</file>
+    <file>images/279936-snowflake-background-3840x2160-1080p.jpg</file>
+    <file>images/tekstura-fon-vektor-snezhinki.jpg</file>
+    <file>images/silver-christmas-wallpaper2.jpg</file>
+    <file>images/502758.jpg</file>
+  </qresource>
 </RCC>
